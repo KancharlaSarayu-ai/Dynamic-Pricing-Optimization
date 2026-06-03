@@ -1,24 +1,12 @@
-# ============================================================
-# Dynamic Pricing Optimization for Ride-Sharing Services
-# CS520 Data Mining
-# Authors: Benjamin Hurst, Michael Hsiu, Sarayu Kancharla
-# ============================================================
-
-# ── 1. Load Libraries ─────────────────────────────────────
-library(caret)       # model training / evaluation
+#1. Load Libraries 
+library(caret)       # model training and evaluation
 library(ggplot2)     # plots
 library(dplyr)       # data manipulation
-library(tidyr)       # data tidying
+library(tidyr)       # data cleaning
 
-# ── 2. Load Dataset ───────────────────────────────────────
+#2. Load Dataset 
 # Dataset: "Dynamic Pricing Dataset" from Kaggle
-# https://www.kaggle.com/datasets/arashnic/dynamic-pricing-dataset
-#
-# Expected CSV columns:
-#   Number_of_Riders, Number_of_Drivers, Location_Category,
-#   Customer_Loyalty_Status, Number_of_Past_Rides, Average_Ratings,
-#   Time_of_Booking, Vehicle_Type, Expected_Ride_Duration,
-#   Historical_Cost_of_Ride
+
 
 data_path <- "data/dynamic_pricing.csv"
 
@@ -30,11 +18,18 @@ if (!file.exists(data_path)) {
   ))
 }
 
+# Expected CSV columns:
+#   Number_of_Riders, Number_of_Drivers, Location_Category,
+#   Customer_Loyalty_Status, Number_of_Past_Rides, Average_Ratings,
+#   Time_of_Booking, Vehicle_Type, Expected_Ride_Duration,
+#   Historical_Cost_of_Ride
+
+
 df <- read.csv(data_path, stringsAsFactors = FALSE)
 cat("Dataset loaded:", nrow(df), "rows,", ncol(df), "columns\n")
 cat("Columns:", paste(names(df), collapse = ", "), "\n\n")
 
-# ── 3. Data Exploration ───────────────────────────────────
+#  3. Data Exploration 
 cat("=== Summary Statistics ===\n")
 print(summary(df))
 
@@ -55,9 +50,9 @@ p1 <- ggplot(df, aes(x = Expected_Ride_Duration, y = Historical_Cost_of_Ride)) +
 ggsave("plots/01_duration_vs_cost_scatter.png", p1, width = 8, height = 5, dpi = 150)
 cat("Saved: plots/01_duration_vs_cost_scatter.png\n")
 
-# ── 4. Feature Engineering ────────────────────────────────
+# 4. Feature Engineering 
 
-# 4a. Infer "predicted cost for expected ride duration" via simple linear regression
+#Infer "predicted cost for expected ride duration" via simple linear regression
 #     and add it as a new feature
 base_model <- lm(Historical_Cost_of_Ride ~ Expected_Ride_Duration, data = df)
 cat("\n=== Base Model (Duration Only) ===\n")
@@ -79,15 +74,12 @@ p2 <- ggplot(df, aes(x = Expected_Ride_Duration, y = Historical_Cost_of_Ride)) +
 ggsave("plots/02_duration_vs_cost_with_regression.png", p2, width = 8, height = 5, dpi = 150)
 cat("Saved: plots/02_duration_vs_cost_with_regression.png\n")
 
-# 4b. Encode categorical features as 0 / 1
-#     Location_Category  : "Urban" → 0, others → 1 (rural / suburban)
-#     Customer_Loyalty_Status : "Silver" → 0, "Gold" → 1
-#     Vehicle_Type       : "Economy" → 0, "Premium" → 1
+#Encode categorical features as 0 / 1
 df$Location_Category       <- ifelse(df$Location_Category == "Urban", 0, 1)
 df$Customer_Loyalty_Status <- ifelse(df$Customer_Loyalty_Status == "Gold", 1, 0)
 df$Vehicle_Type            <- ifelse(df$Vehicle_Type == "Premium", 1, 0)
 
-# 4c. Min-max normalise all numeric features to [0, 1]
+# 4c. Min-max normalize all numeric features to [0, 1]
 min_max_norm <- function(x) {
   rng <- range(x, na.rm = TRUE)
   if (diff(rng) == 0) return(rep(0, length(x)))
@@ -103,8 +95,7 @@ numeric_cols <- c(
 df_normalized <- df
 df_normalized[numeric_cols] <- lapply(df[numeric_cols], min_max_norm)
 
-# 4d. Apply subjective impact weights to each feature
-#     Sign reflects direction of effect on price
+#Apply subjective impact weights to each feature
 weights <- list(
   Number_of_Riders       =  0.30,   # More riders → higher demand → price up
   Number_of_Drivers      = -0.25,   # More drivers → more supply → price down
@@ -148,7 +139,7 @@ p3 <- ggplot(df_normalized,
 ggsave("plots/03_adjusted_vs_predicted_cost.png", p3, width = 8, height = 5, dpi = 150)
 cat("Saved: plots/03_adjusted_vs_predicted_cost.png\n")
 
-# ── 5. Model Training ─────────────────────────────────────
+#5. Model Training 
 set.seed(123)  # reproducibility
 
 split_index <- createDataPartition(df_normalized$Adjusted_Cost, p = 0.80,
@@ -171,7 +162,7 @@ model_fit <- train(
 cat("\n=== Final Linear Regression Model ===\n")
 print(summary(model_fit$finalModel))
 
-# ── 6. Model Evaluation ───────────────────────────────────
+# 6. Model Evaluation
 train_preds <- predict(model_fit, train_data)
 test_preds  <- predict(model_fit, test_data)
 
