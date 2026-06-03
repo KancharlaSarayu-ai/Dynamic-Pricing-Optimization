@@ -1,0 +1,13 @@
+# R artifacts
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Dataset (too large / not redistributable)
+data/*.csv
+data/*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
